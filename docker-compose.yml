@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+
+  postgresql_db:
+    container_name: postgresql_db
+    image: 'bitnami/postgresql:latest'
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      - database-network
+    environment:
+      - POSTGRES_USER=postgres_user
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_DB=postgres_db
+    volumes:
+      - postgresql_db_data:/bitnami/postgresql
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    networks:
+      - database-network
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=pgadmin_default_email@gmail.com
+      - PGADMIN_DEFAULT_PASSWORD=pgadmin_default_password
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgresql_db
+
+  application:
+    container_name: application
+    build: ./application
+    command: bash -c "alembic stamp head && alembic revision --autogenerate && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    networks:
+      - database-network
+    volumes:
+      - application_alembic_data:/application/alembic
+    ports:
+      - "8000:8000"
+    restart: on-failure
+    depends_on:
+      - postgresql_db
+
+volumes:
+  postgresql_db_data:
+  pgadmin-data:
+  application_alembic_data:
+
+networks:
+  database-network:
